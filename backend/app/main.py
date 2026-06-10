@@ -1,13 +1,37 @@
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
+from .db import SessionLocal
+from .notifications import build_adapter_registry
+from .notifications.scheduler import ReminderScheduler
 from .routers import account as account_router
 from .routers import auth as auth_router
 from .routers import notes as notes_router
 from .routers import tags as tags_router
 
-app = FastAPI(title="Notes API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task: asyncio.Task | None = None
+    app.state.scheduler = None
+    if settings.scheduler_enabled:
+        scheduler = ReminderScheduler(SessionLocal, build_adapter_registry(settings))
+        app.state.scheduler = scheduler
+        task = asyncio.create_task(scheduler.run())
+    try:
+        yield
+    finally:
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+
+app = FastAPI(title="Notes API", version="0.1.0", lifespan=lifespan)
 
 _origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
