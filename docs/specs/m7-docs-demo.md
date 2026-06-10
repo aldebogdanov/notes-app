@@ -83,12 +83,29 @@ The six asked questions, answered honestly:
    English-only, `getUpdates` linking breaks if the bot ever gets a webhook,
    single-process scheduler assumption.
 
-## 4. SPEC.md / housekeeping (in this PR)
+## 4. `docs/architecture.md` update
+
+The scaffold's architecture doc is now factually stale — updating it is part of the
+"leave order behind" mandate. Additive edits in the original's style/voice:
+
+- **fix the lie**: "Exposes HTTP only — no background jobs" → describe the lifespan
+  scheduler (single asyncio task, wake-on-CRUD + 15-min safety rescan, at-least-once);
+- backend packages graph/list + layout tree: `app/notifications/` (base / telegram /
+  registry / scheduler), `routers/notifications.py`, migration `0003`;
+- ER diagram: `users.notification_settings` (json) and the `note_notifications` table,
+  plus a short row-lifecycle paragraph (no row = unprocessed; terminal rows immutable;
+  UNIQUE(note_id, channel));
+- API surface table: the five `/account/notifications/*` endpoints;
+- frontend: `NotificationSettings` in the components list/graph;
+- cross-cutting: optional `TELEGRAM_BOT_TOKEN` (degrades to skipped), `SCHEDULER_ENABLED`,
+  and the testing-boundary note gains its proven example (DISTINCT over Postgres `json`).
+
+## 5. SPEC.md / housekeeping (in this PR)
 
 - M4/M5 marked ✅, M6 marked ❌ dropped with rationale (done in this spec PR);
 - M7 milestone text updated to match this spec (demo script instead of video).
 
-## 5. DoD mapping
+## 6. DoD mapping
 
 | DoD item | M7 |
 |---|---|
@@ -100,7 +117,7 @@ The six asked questions, answered honestly:
 | i18n | N/A (README/SUBMISSION are docs, not UI strings) |
 | `.env.example` | N/A |
 
-## 6. Risks / notes
+## 7. Risks / notes
 
 - Demo script talks to real Telegram — it is excluded from pytest/vitest by location
   (`scripts/`, repo root) and never imported by the app.
