@@ -1,8 +1,17 @@
 # M7 — Docs, demo & submission
 
 Implementation spec for milestone M7 from `SPEC.md`. Scope: documentation and the
-deliverables the task asks to submit — no application code changes (pure docs +
-one demo shell script). Final mandatory milestone; M8/M9 optional extras decided after.
+deliverables the task asks to submit — plus one called-out code fix discovered while
+scripting the demo (see §0). Final mandatory milestone; M8/M9 optional extras decided
+after.
+
+## 0. Scope deviation: born-past-due fix (scheduler)
+
+Writing the demo script exposed that M3's instant-level comparison
+(`created_at > local midnight`) skips a note dated today and created today — the exact
+flow the demo (and the task's "момент наступления даты" intent, per the M1 decision
+"today counts as due-now") requires. Fixed to a day-level comparison in the owner's
+timezone; regression test added; M3 spec doc amended accordingly.
 
 ## 1. README.md — "Telegram reminders" section
 
@@ -78,8 +87,7 @@ The six asked questions, answered honestly:
 6. **Known caveats** — at-least-once delivery (the crash window between send and
    finalize is not fixable by a transaction: the send is an external side effect and
    Telegram's `sendMessage` offers no idempotency key; at-most-once would trade a rare
-   duplicate for a silently lost reminder — duplicate chosen deliberately),
-   born-past-due minute-edge (note created 00:05 on its own date → skipped), bot text
+   duplicate for a silently lost reminder — duplicate chosen deliberately), bot text
    English-only, `getUpdates` linking breaks if the bot ever gets a webhook,
    single-process scheduler assumption.
 

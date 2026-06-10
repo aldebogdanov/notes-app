@@ -131,7 +131,11 @@ class ReminderScheduler:
 
         config = get_channel_config(note.owner, channel)
         adapter = self._registry.get(channel)
-        born_past_due = _aware_utc(note.created_at) > due_at
+        # Day-based, not instant-based: a note created on its own date is due
+        # now and must send (the live-demo path). Only a note created on a
+        # *later* local day than its date was never a live reminder.
+        created_local_date = _aware_utc(note.created_at).astimezone(due_at.tzinfo).date()
+        born_past_due = created_local_date > note.note_date
         deliverable = adapter is not None and config.enabled and config.chat_ref is not None
         if note.archived_at is not None or born_past_due or not deliverable:
             ensure_row().status = NotificationStatus.SKIPPED

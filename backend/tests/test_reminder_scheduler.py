@@ -451,3 +451,18 @@ async def test_resolved_history_not_picked_up_by_pass(
 
     assert seen == [fresh.id]  # resolved history filtered out in SQL
     s.close()
+
+
+@pytest.mark.anyio
+async def test_note_created_today_for_today_sends(scheduler, session_factory, adapter):
+    # The live-demo path: user creates a note dated today, mid-day. The due
+    # moment (local midnight) is in the past, but creation on the same local
+    # day must not count as born-past-due.
+    s = session_factory()
+    note = make_note(s, make_user(s), TODAY, created_at=datetime(2026, 6, 10, 11, 30))
+
+    await scheduler.process_due_notes()
+
+    assert get_row(s, note.id).status == "sent"
+    assert len(adapter.sent) == 1
+    s.close()
