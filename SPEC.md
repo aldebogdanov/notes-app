@@ -107,17 +107,18 @@ Status: ✅ = implementation merged.
   wake-up recalculation hooked into note create/update/delete, injectable clock.
   Tests cover all branches with fake clock + fake adapter (no real sleeps, no real Telegram).
 
-- **M4 — Settings & linking API** (`feat/m4-notification-api`)
+- ✅ **M4 — Settings & linking API** (`feat/m4-notification-api`)
   Endpoints above, link-code flow (`getUpdates` on demand), validation (IANA tz), rate-limit
   reuse where sensible, `openapi.json` regenerated, API tests.
 
-- **M5 — Frontend: notification settings** (`feat/m5-settings-ui`)
+- ✅ **M5 — Frontend: notification settings** (`feat/m5-settings-ui`)
   Notifications panel in Settings: link/verify/unlink Telegram, per-channel enable toggle,
   timezone select. `api.js` methods. i18n strings EN + RU. Component tests.
 
-- **M6 — Frontend: toasts** (`feat/m6-toasts`)
-  Lightweight ToastContext (no heavy deps): success/error toasts for note create/update/
-  delete, settings saved, Telegram linked/unlinked. i18n EN + RU. Tests.
+- ❌ **M6 — Frontend: toasts** (dropped 2026-06-10)
+  Scope cut: not required by the task. The underlying observation — the scaffold has no
+  feedback layer at all (silent successes, per-page inline error divs duplicated 5×, raw
+  `window.confirm`) — moves to SUBMISSION.md "scaffold observations / next steps" (M7).
 
 - **M7 — Docs, demo & polish** (`feat/m7-docs-demo`)
   README section (setup, bot token, linking), demo script — exact command sequence proving
