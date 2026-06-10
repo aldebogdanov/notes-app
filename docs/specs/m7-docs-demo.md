@@ -39,14 +39,22 @@ product code: no tests, but `shellcheck`-clean and referenced from README.
 
 ## 3. SUBMISSION.md (repo root)
 
+**Written in Russian** — it is the letter to the reviewer and the task is in Russian
+(the CLAUDE.md English-only rule covers code/comments/commits, not this document).
+
 The six asked questions, answered honestly:
 
 1. **Fork link** — this repo, `main` (all milestone PRs merged here).
 2. **Tools** — Claude Code (Fable 5) driven through a spec-PR → implementation-PR
    workflow per milestone; Qdrant as dev-side memory between sessions (no product
    dependency).
-3. **Why these tools** — 1–2 sentences: reviewable AI output via small human-gated PRs;
-   specs force the design conversation before code.
+3. **Why these tools** — the real reasons:
+   - this spec-driven flow (spec PR → impl PR) was already battle-tested by the author
+     with Claude on earlier work;
+   - the only currently active paid AI subscription;
+   - the Qdrant-memory tooling was already proven in this setup;
+   - Fable 5 had just been released — deliberate test drive of the new model;
+   - most of the author's AI-tooling experience is with Claude.
 4. **Scaffold observations** — the accumulated list:
    - `ruff>=0.5` unpinned → 0.15.x reformats old code, `make lint` red on clean checkout
      (fixed in M1, pin recommended);
@@ -57,11 +65,20 @@ The six asked questions, answered honestly:
    - no user feedback layer: silent successes, inline error divs duplicated per page,
      raw `window.confirm` (M6 dropped in favor of this observation);
    - `notes.tags` JSON forces Python-side tag filtering (dialect-agnostic but O(n));
-   - no CI config in the repo despite DoD-style gates.
-5. **Next steps** — toasts (ToastProvider mirroring LangProvider idiom), note-list
-   reminder-status badges, modal confirms, `FOR UPDATE SKIP LOCKED` + multi-worker
-   scheduler, webhook-based Telegram updates, bot-message i18n, pin ruff + add CI.
-6. **Known caveats** — at-least-once delivery (crash window between send and finalize),
+   - no CI config in the repo despite DoD-style gates;
+   - product gap: reminders can only fire at local midnight because `note_date` has no
+     time component — a per-note (or per-user default) reminder *time* would be the
+     natural next product improvement.
+5. **Next steps** — more notification adapters (Slack, Discord, email — the adapter
+   registry and `note_notifications.channel` are already shaped for it), per-note
+   reminder time (see observation above), toasts (ToastProvider mirroring the
+   LangProvider idiom), note-list reminder-status badges, modal confirms,
+   `FOR UPDATE SKIP LOCKED` + multi-worker scheduler, webhook-based Telegram updates,
+   bot-message i18n, pin ruff + add CI.
+6. **Known caveats** — at-least-once delivery (the crash window between send and
+   finalize is not fixable by a transaction: the send is an external side effect and
+   Telegram's `sendMessage` offers no idempotency key; at-most-once would trade a rare
+   duplicate for a silently lost reminder — duplicate chosen deliberately),
    born-past-due minute-edge (note created 00:05 on its own date → skipped), bot text
    English-only, `getUpdates` linking breaks if the bot ever gets a webhook,
    single-process scheduler assumption.
