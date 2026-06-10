@@ -12,7 +12,13 @@ Brownfield FastAPI + Postgres + React/Vite notes app (Docker Compose). We are im
 
 ## Workflow
 
-- One milestone from `SPEC.md` = one git branch (`feat/m<N>-<slug>`) = one Pull Request.
+- One milestone from `SPEC.md` = two Pull Requests, in order:
+  1. **Spec PR** (`spec/m<N>-<slug>`) — detailed implementation spec in
+     `docs/specs/m<N>-<slug>.md`: migration DDL, model/schema changes, test list,
+     DoD mapping, risks. Merged before implementation starts.
+  2. **Implementation PR** (`feat/m<N>-<slug>`) — code following the merged spec.
+     If implementation must deviate, update the spec doc in the same PR and call it
+     out in the description.
 - PRs must stay compact and human-reviewable. If a milestone grows too big, split it and
   update `SPEC.md` rather than shipping a huge diff.
 - Never commit directly to `main`. Don't start milestone N+1 in the same branch as N.
