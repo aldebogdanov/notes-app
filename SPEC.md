@@ -88,20 +88,21 @@ in the user's timezone** ("the moment the date arrives"). Therefore:
 
 ## Milestones
 
-One branch + one compact PR per milestone, in order. Branch naming: `feat/m<N>-<slug>`.
+One spec PR + one implementation PR per milestone, in order (see CLAUDE.md workflow).
+Status: ✅ = implementation merged.
 
-- **M1 — Schema & seed** (`feat/m1-notification-schema`)
+- ✅ **M1 — Schema & seed** (`feat/m1-notification-schema`)
   Migration 0003: `users.notification_settings` + `note_notifications` table (+ downgrade),
   models/Pydantic schema updates (derived `notification_status` map in note responses),
   backfill rule, seed extended with past/today/future dated notes and skipped rows.
   Tests for defaults and backfill.
 
-- **M2 — Notification adapter layer** (`feat/m2-notification-adapters`)
+- ✅ **M2 — Notification adapter layer** (`feat/m2-notification-adapters`)
   `NotificationAdapter` protocol, `TelegramAdapter` (httpx, retries with backoff), adapter
   registry, `TELEGRAM_BOT_TOKEN` in config + `.env.example` + docker-compose passthrough.
   Unit tests with mocked HTTP (respx); no scheduler yet.
 
-- **M3 — Scheduler** (`feat/m3-reminder-scheduler`)
+- ✅ **M3 — Scheduler** (`feat/m3-reminder-scheduler`)
   Lifespan-managed asyncio scheduler: due-note query, processing pass (sent/skipped/failed),
   wake-up recalculation hooked into note create/update/delete, injectable clock.
   Tests cover all branches with fake clock + fake adapter (no real sleeps, no real Telegram).
