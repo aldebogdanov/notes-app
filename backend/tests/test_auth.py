@@ -88,7 +88,11 @@ def test_strong_jwt_secret_still_signs_and_verifies_tokens(client, monkeypatch):
     token = create_access_token(42)
     user = get_current_user(
         token=token,
-        db=type("SessionStub", (), {"get": lambda self, model, user_id: User(id=user_id, username="alice")})(),
+        db=type(
+            "SessionStub",
+            (),
+            {"get": lambda self, model, user_id: User(id=user_id, username="alice")},
+        )(),
     )
 
     assert user.id == 42

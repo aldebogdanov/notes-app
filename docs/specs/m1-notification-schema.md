@@ -105,8 +105,13 @@ Missing keys = defaults (UTC, disabled, unlinked). `{}` is a valid value.
 notification_status: dict[str, str] = {}
 ```
 
-Computed in the router layer (helper `notification_status_map(note, today)` in
-`app/notifications/__init__.py`), not a DB column:
+Computed via helper `notification_status_map(note, today)` in
+`app/notifications/__init__.py`, not a DB column. *(Implementation notes: exposed as a
+`Note.notification_status` property delegating to the helper — endpoints return ORM
+objects under `response_model=NoteOut` (`from_attributes`), so a property feeds all of
+them without rebuilding `NoteOut` in ~10 routers. `NotificationStatus` also lives in
+`app/notifications/`, not `models.py`: `models` imports the helper, enum next to helper
+avoids a circular import.)* Rules:
 
 - row exists for channel → its `status`;
 - no row, channel in `KNOWN_CHANNELS`, `note_date` is today or future → `"pending"`;
