@@ -73,4 +73,12 @@ export const api = {
     }),
   deleteAccount: (password) =>
     request('/account', { method: 'DELETE', body: { password } }),
+
+  getNotificationSettings: () => request('/account/notifications/settings'),
+  updateNotificationSettings: (payload) =>
+    request('/account/notifications/settings', { method: 'PUT', body: payload }),
+  telegramLink: () => request('/account/notifications/telegram/link', { method: 'POST' }),
+  telegramVerify: () => request('/account/notifications/telegram/verify', { method: 'POST' }),
+  telegramUnlink: () =>
+    request('/account/notifications/telegram/link', { method: 'DELETE' }),
 };
