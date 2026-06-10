@@ -2,6 +2,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .notifications import NotificationStatus
+
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=64)
@@ -34,6 +36,7 @@ class NoteOut(BaseModel):
     note_date: date | None
     archived_at: datetime | None
     pinned_at: datetime | None
+    notification_status: dict[str, NotificationStatus] = {}
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

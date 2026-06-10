@@ -223,6 +223,14 @@
             ],
             "title": "Note Date"
           },
+          "notification_status": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/NotificationStatus"
+            },
+            "default": {},
+            "title": "Notification Status",
+            "type": "object"
+          },
           "pinned_at": {
             "anyOf": [
               {
@@ -296,6 +304,16 @@
         ],
         "title": "NotesPage",
         "type": "object"
+      },
+      "NotificationStatus": {
+        "enum": [
+          "pending",
+          "sent",
+          "skipped",
+          "failed"
+        ],
+        "title": "NotificationStatus",
+        "type": "string"
       },
       "OkOut": {
         "properties": {

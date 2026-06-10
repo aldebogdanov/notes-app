@@ -4,7 +4,8 @@ from datetime import date, timedelta
 
 from app.auth import hash_password
 from app.db import SessionLocal
-from app.models import Note, User
+from app.models import Note, NoteNotification, User
+from app.notifications import NotificationStatus
 
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD = "demo1234"
@@ -18,7 +19,11 @@ def seed() -> None:
             db.delete(existing)
             db.commit()
 
-        user = User(username=DEMO_USERNAME, password_hash=hash_password(DEMO_PASSWORD))
+        user = User(
+            username=DEMO_USERNAME,
+            password_hash=hash_password(DEMO_PASSWORD),
+            notification_settings={},
+        )
         db.add(user)
         db.flush()
 
@@ -51,6 +56,21 @@ def seed() -> None:
                 content="_Fleeting thought worth keeping._",
                 tags=["ideas"],
                 note_date=None,
+            ),
+            # Past-dated note: reminder window already gone, so it carries the
+            # same "skipped" row the 0003 migration backfills for old data.
+            Note(
+                user_id=user.id,
+                title="Yesterday retro",
+                content="What went well, what to improve.",
+                tags=["work"],
+                note_date=today - timedelta(days=1),
+                notifications=[
+                    NoteNotification(
+                        channel="telegram",
+                        status=NotificationStatus.SKIPPED,
+                    )
+                ],
             ),
         ]
         db.add_all(notes)

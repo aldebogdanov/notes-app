@@ -3,7 +3,7 @@ from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from ..deps import get_current_user, get_db
 from ..models import Note, User
@@ -52,7 +52,8 @@ def list_notes(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> NotesPage:
-    query = db.query(Note).filter(Note.user_id == user.id)
+    # selectinload keeps NoteOut.notification_status derivation out of N+1.
+    query = db.query(Note).options(selectinload(Note.notifications)).filter(Note.user_id == user.id)
     if archived:
         query = query.filter(Note.archived_at.is_not(None))
     else:
