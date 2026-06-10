@@ -47,6 +47,10 @@ recipient id (`chat_id` for Telegram) stored in `users.notification_settings`.
   | other 4xx (bad chat_id, bot blocked, bad token) | `NotificationSendError` immediately, no retry |
 
 - After attempts exhausted → `NotificationSendError`.
+- **Length limit is the adapter's concern**: Telegram caps `text` at 4096 chars, and only
+  the adapter knows its channel's cap. `send()` truncates longer text to 4095 chars + `…`
+  before POSTing. Callers (M3 composer) pass whatever they build; future adapters apply
+  their own channel caps.
 - Retry split vs M3: adapter retries *transient* errors within one send call; the
   scheduler's `attempts`/`failed` columns (M1) count *send calls* across passes. Two
   layers, two concerns: in-call jitter vs durable outcome.
@@ -96,7 +100,9 @@ Async tests via the anyio pytest plugin (ships with fastapi's anyio dependency;
 7. error message contains status + description, never the token;
 8. registry: token set → `{"telegram": ...}`; token None/empty → `{}`;
 9. app boot smoke without token (existing `client` fixture already runs tokenless —
-   assert registry empty via direct call).
+   assert registry empty via direct call);
+10. text longer than 4096 chars → POSTed `text` is exactly 4096 (4095 + `…`); shorter
+    text passes through unchanged.
 
 Coverage stays ≥ 80% (adapter+registry are small, fully covered).
 
@@ -118,5 +124,5 @@ Coverage stays ≥ 80% (adapter+registry are small, fully covered).
   pinned — pin it to `"asyncio"` in the test module (trio not installed).
 - respx must match the tokenized URL; use `url__regex` or mount on base_url to avoid
   embedding the fake token twice.
-- `sendMessage` length limit (4096 chars) is a real Telegram constraint — M3 composes the
-  message text and will truncate; adapter passes text through untouched.
+- Telegram counts the 4096 limit in UTF-16 code units when entities are involved; for the
+  plain-text messages we send, a Python `len()` cut is correct enough — noted for honesty.
