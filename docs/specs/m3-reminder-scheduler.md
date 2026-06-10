@@ -39,6 +39,20 @@ class ReminderScheduler:
     def notify_change(self) -> None      # thread-safe wake-up from sync endpoints
 ```
 
+### Static registry vs live user settings
+
+The constructor-injected registry is **deployment** config: which adapters hold server
+credentials (`TELEGRAM_BOT_TOKEN` and future tokens come from env vars, which only change
+with a process restart — lifespan rebuilds the registry then). Nothing in the UI can ever
+add or remove a registry entry, so the scheduler is never recreated at runtime.
+
+Everything the UI *does* change (M4/M5 — per-user `enabled` toggles, `chat_id` linking,
+timezone) lives in `users.notification_settings` and is read **fresh from the DB on every
+pass** via `get_channel_config(user, channel)` at processing time — never cached on the
+scheduler. A toggle flipped in Settings is honored by the very next pass with no
+restart and no signal (though M4 may also call `notify_change()` on settings writes so a
+freshly-enabled due note fires immediately instead of waiting for the next wake-up).
+
 ### Loop
 
 1. `process_due_notes()`.
