@@ -1,15 +1,28 @@
-"""Notification channels: shared constants and helpers.
+"""Notification channels: adapters, registry, shared constants and helpers.
 
-M1 ships only the schema-level pieces. The adapter registry replaces
-KNOWN_CHANNELS in M2 under the same import path.
+KNOWN_CHANNELS = channels the product implements (drives "pending" derivation
+even on deployments without a token). The adapter registry is the subset
+actually configured at runtime — see registry.py.
 """
 
 import enum
 from datetime import date
 from typing import TYPE_CHECKING
 
+from .base import NotificationAdapter, NotificationSendError
+from .registry import build_adapter_registry
+
 if TYPE_CHECKING:
     from ..models import Note
+
+__all__ = [
+    "KNOWN_CHANNELS",
+    "NotificationAdapter",
+    "NotificationSendError",
+    "NotificationStatus",
+    "build_adapter_registry",
+    "notification_status_map",
+]
 
 KNOWN_CHANNELS: tuple[str, ...] = ("telegram",)
 

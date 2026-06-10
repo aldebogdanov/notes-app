@@ -24,6 +24,7 @@ services:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/notes
       JWT_SECRET: dev-secret-change-me-please-32bytes
       CORS_ORIGINS: http://localhost:5173
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     ports:
       - "8000:8000"
     volumes:
