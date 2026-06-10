@@ -1,7 +1,7 @@
 from calendar import monthrange
 from datetime import UTC, date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import case, or_
 from sqlalchemy.orm import Session, selectinload
 
@@ -38,6 +38,13 @@ def _own_note_or_404(note_id: int, user: User, db: Session) -> Note:
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _notify_scheduler(request: Request) -> None:
+    """Note dates changed — let the reminder loop recompute its wake-up."""
+    scheduler = getattr(request.app.state, "scheduler", None)
+    if scheduler is not None:
+        scheduler.notify_change()
 
 
 @router.get("", response_model=NotesPage)
@@ -100,6 +107,7 @@ def list_notes(
 
 @router.post("", response_model=NoteOut, status_code=status.HTTP_201_CREATED)
 def create_note(
+    request: Request,
     payload: NoteIn,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -114,6 +122,7 @@ def create_note(
     db.add(note)
     db.commit()
     db.refresh(note)
+    _notify_scheduler(request)
     return note
 
 
@@ -146,6 +155,7 @@ def calendar(
 
 @router.post("/bulk-delete", status_code=status.HTTP_204_NO_CONTENT)
 def bulk_delete(
+    request: Request,
     payload: BulkDeleteIn,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -154,6 +164,7 @@ def bulk_delete(
     for n in notes:
         db.delete(n)
     db.commit()
+    _notify_scheduler(request)
 
 
 @router.get("/{note_id}", response_model=NoteOut)
@@ -167,6 +178,7 @@ def get_note(
 
 @router.put("/{note_id}", response_model=NoteOut)
 def update_note(
+    request: Request,
     note_id: int,
     payload: NoteIn,
     user: User = Depends(get_current_user),
@@ -179,11 +191,13 @@ def update_note(
     note.note_date = payload.note_date
     db.commit()
     db.refresh(note)
+    _notify_scheduler(request)
     return note
 
 
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(
+    request: Request,
     note_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -191,10 +205,12 @@ def delete_note(
     note = _own_note_or_404(note_id, user, db)
     db.delete(note)
     db.commit()
+    _notify_scheduler(request)
 
 
 @router.post("/{note_id}/archive", response_model=NoteOut)
 def archive_note(
+    request: Request,
     note_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -204,11 +220,13 @@ def archive_note(
         note.archived_at = _now()
         db.commit()
         db.refresh(note)
+        _notify_scheduler(request)
     return note
 
 
 @router.post("/{note_id}/unarchive", response_model=NoteOut)
 def unarchive_note(
+    request: Request,
     note_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -218,6 +236,7 @@ def unarchive_note(
         note.archived_at = None
         db.commit()
         db.refresh(note)
+        _notify_scheduler(request)
     return note
 
 

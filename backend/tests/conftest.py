@@ -2,6 +2,9 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-secret-with-at-least-32-characters")
+# TestClient runs the lifespan; the reminder loop must not run against the
+# test SQLite engine. Scheduler tests instantiate the class directly.
+os.environ.setdefault("SCHEDULER_ENABLED", "false")
 
 import pytest
 from fastapi.testclient import TestClient

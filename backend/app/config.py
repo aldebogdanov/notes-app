@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     # Optional: empty/unset disables the telegram notification channel.
     telegram_bot_token: str | None = None
+    # Reminder scheduler loop; tests turn it off (see tests/conftest.py).
+    scheduler_enabled: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
