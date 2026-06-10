@@ -2,8 +2,9 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..models import Note, NoteNotification, User
@@ -73,10 +74,27 @@ class ReminderScheduler:
         session = self._session_factory()
         try:
             now = self._now()
+            # Fully-resolved notes are excluded in SQL, otherwise every pass
+            # would fetch the entire ever-growing history just to skip it in
+            # Python. A note is exhausted when every known channel has a row
+            # that is terminal or out of attempts. No date bound here: an
+            # unresolved note must be caught up regardless of age.
+            resolved_rows = (
+                select(func.count(NoteNotification.id))
+                .where(
+                    NoteNotification.note_id == Note.id,
+                    (NoteNotification.status != NotificationStatus.PENDING)
+                    | (NoteNotification.attempts >= self._max_attempts),
+                )
+                .scalar_subquery()
+            )
             notes = (
                 session.query(Note)
                 .options(selectinload(Note.notifications), joinedload(Note.owner))
-                .filter(Note.note_date.is_not(None))
+                .filter(
+                    Note.note_date.is_not(None),
+                    resolved_rows < len(KNOWN_CHANNELS),
+                )
                 .all()
             )
             for note in notes:
@@ -152,11 +170,15 @@ class ReminderScheduler:
     def _next_due_moment(self) -> datetime | None:
         """Earliest *upcoming* due instant among dated, non-archived notes.
 
-        Past moments are excluded — the pass just resolved them (pending
-        retries ride the safety rescan). Terminal-state filtering is skipped
-        on purpose: a spurious wake-up is a cheap no-op pass, while the
-        filter would need per-channel SQL.
+        Only future midnights matter here, and a local midnight of date D can
+        be in the future only if D > today in the owner's timezone; with
+        offsets spanning UTC-12..UTC+14 anything older than utc_today - 1 can
+        never qualify, so the query is bounded by the note_date index (the
+        extra day is deliberate safety margin). Terminal-state filtering is
+        not needed at all: notification rows are created only once a note is
+        due, so future-dated notes have no rows to filter by.
         """
+        now = self._now()
         session = self._session_factory()
         try:
             # No DISTINCT: Postgres json columns have no equality operator;
@@ -164,12 +186,14 @@ class ReminderScheduler:
             pairs = (
                 session.query(Note.note_date, User.notification_settings)
                 .join(User, Note.user_id == User.id)
-                .filter(Note.note_date.is_not(None), Note.archived_at.is_(None))
+                .filter(
+                    Note.note_date >= now.date() - timedelta(days=1),
+                    Note.archived_at.is_(None),
+                )
                 .all()
             )
         finally:
             session.close()
-        now = self._now()
         moments = []
         for note_date, settings_json in pairs:
             owner = User(notification_settings=settings_json or {})

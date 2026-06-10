@@ -377,3 +377,77 @@ def test_next_wait_without_candidates_is_rescan(session_factory, adapter):
         session_factory, {"telegram": adapter}, now=FakeClock(), rescan_interval=900.0
     )
     assert scheduler._next_wait_seconds() == 900.0
+
+
+def test_next_wait_date_prefilter_keeps_utc_minus_12_today(session_factory, adapter):
+    # Etc/GMT+12 is UTC-12 (POSIX sign inversion). At 11:00 UTC the local date
+    # is still *yesterday*, so today's UTC date has a future local midnight at
+    # 12:00 UTC — exactly the case the >= utc_today - 1 bound must not drop.
+    clock = FakeClock(datetime(2026, 6, 10, 11, 0, tzinfo=UTC))
+    scheduler = ReminderScheduler(
+        session_factory, {"telegram": adapter}, now=clock, rescan_interval=100000.0
+    )
+    s = session_factory()
+    west = make_user(s, {"timezone": "Etc/GMT+12"}, username="west")
+    make_note(s, west, TODAY)
+    s.close()
+
+    assert scheduler._next_wait_seconds() == 3600.0  # 12:00 UTC midnight, 1h away
+
+
+def test_next_wait_ignores_past_dates_even_in_utc_plus_14(session_factory, adapter):
+    # Pacific/Kiritimati (UTC+14): today's UTC date had its local midnight at
+    # 10:00 UTC *yesterday* — already past at 12:00 UTC. Old dates and past
+    # midnights must both fall back to plain rescan.
+    clock = FakeClock(datetime(2026, 6, 10, 12, 0, tzinfo=UTC))
+    scheduler = ReminderScheduler(
+        session_factory, {"telegram": adapter}, now=clock, rescan_interval=900.0
+    )
+    s = session_factory()
+    east = make_user(s, {"timezone": "Pacific/Kiritimati"}, username="east")
+    make_note(s, east, TODAY)
+    make_note(s, east, date(2026, 5, 1))
+    s.close()
+
+    assert scheduler._next_wait_seconds() == 900.0
+
+
+# --- pass query prefilter ---
+
+
+@pytest.mark.anyio
+async def test_old_unresolved_note_caught_up_regardless_of_age(scheduler, session_factory, adapter):
+    s = session_factory()
+    note = make_note(s, make_user(s), date(2025, 1, 1), created_at=datetime(2024, 12, 1, 12, 0))
+
+    await scheduler.process_due_notes()
+
+    assert get_row(s, note.id).status == "sent"
+    assert len(adapter.sent) == 1
+    s.close()
+
+
+@pytest.mark.anyio
+async def test_resolved_history_not_picked_up_by_pass(
+    scheduler, session_factory, adapter, monkeypatch
+):
+    s = session_factory()
+    user = make_user(s)
+    for i, status in enumerate(["sent", "skipped", "failed"]):
+        old = make_note(s, user, YESTERDAY, title=f"old{i}")
+        s.add(NoteNotification(note_id=old.id, channel="telegram", status=status, attempts=3))
+    s.commit()
+    fresh = make_note(s, user, TODAY, title="fresh")
+
+    seen: list[int] = []
+    original = ReminderScheduler._process_one
+
+    async def spy(self, session, note, *args, **kwargs):
+        seen.append(note.id)
+        return await original(self, session, note, *args, **kwargs)
+
+    monkeypatch.setattr(ReminderScheduler, "_process_one", spy)
+    await scheduler.process_due_notes()
+
+    assert seen == [fresh.id]  # resolved history filtered out in SQL
+    s.close()
