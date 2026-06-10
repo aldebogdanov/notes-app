@@ -11,11 +11,13 @@ when a note's date arrives.
   (`notification_settings.timezone`, invalid/missing → UTC). Equivalent test:
   `note_date <= today_in_owner_tz`.
 - Due + no terminal row → the scheduler must resolve it this pass.
-- **Born past-due vs missed**: a note *created after its own due moment*
-  (`created_at` UTC > local midnight of `note_date`) was never a live reminder →
-  `skipped` (the SPEC.md "new note with passed date" rule). A note created *before* its
-  due moment but processed late (server downtime) → normal send, catch-up beats silent
-  loss. One comparison distinguishes the two — no creation-time hook needed.
+- **Born past-due vs missed**: a note created on a *later local day* than its
+  `note_date` was never a live reminder → `skipped` (the SPEC.md "new note with passed
+  date" rule). A note created on its own date — or earlier but processed late (server
+  downtime) → normal send; same-day means the date has just arrived, catch-up beats
+  silent loss. One day-level comparison distinguishes the cases — no creation hook.
+  *(Amended in M7: the original instant-level comparison `created_at > due moment`
+  wrongly skipped the today-note-created-today case — the live-demo path.)*
 - **Archived notes are skipped** (product call: archived = put away, no reminders).
   Unarchiving after the date has passed does not resurrect the reminder.
 - A `skipped`/`sent`/`failed` row is terminal forever — enabling notifications later never
@@ -179,8 +181,8 @@ Next-wake computation:
   conftest is the critical line; forgetting it = flaky suite against `:memory:` SQLite.
 - `seed` wipes the demo user while the scheduler may be mid-pass on dev stacks — pass
   errors are logged-and-survived, acceptable for dev.
-- The born-past-due comparison uses `created_at` (server clock, UTC) vs the due instant —
-  a note created 00:05 local on its own date is "created after midnight", i.e. born
-  past-due by minutes, and gets skipped. Acceptable: the reminder moment had already
-  passed when the user wrote the note. Edge documented, covered by test 2.
+- The born-past-due comparison is day-level in the owner's timezone: a note created
+  any time on its own date sends immediately (due moment already passed). Users who
+  want "no reminder for a note I just wrote about today" don't get that knob — accepted,
+  matches the SPEC.md strictly-past rule. Covered by tests.
 - `datetime.now(UTC)` and `ZoneInfo` only — no `pytz`, no naive datetimes anywhere.
