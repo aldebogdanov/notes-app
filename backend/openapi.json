@@ -305,6 +305,81 @@
         "title": "NotesPage",
         "type": "object"
       },
+      "NotificationChannelOut": {
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "linked": {
+            "title": "Linked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available",
+          "enabled",
+          "linked"
+        ],
+        "title": "NotificationChannelOut",
+        "type": "object"
+      },
+      "NotificationSettingsIn": {
+        "properties": {
+          "channels": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/TelegramChannelIn"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          }
+        },
+        "title": "NotificationSettingsIn",
+        "type": "object"
+      },
+      "NotificationSettingsOut": {
+        "properties": {
+          "channels": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/NotificationChannelOut"
+            },
+            "title": "Channels",
+            "type": "object"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timezone",
+          "channels"
+        ],
+        "title": "NotificationSettingsOut",
+        "type": "object"
+      },
       "NotificationStatus": {
         "enum": [
           "pending",
@@ -324,6 +399,42 @@
           }
         },
         "title": "OkOut",
+        "type": "object"
+      },
+      "TelegramChannelIn": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "TelegramChannelIn",
+        "type": "object"
+      },
+      "TelegramLinkOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "deep_link": {
+            "title": "Deep Link",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "deep_link",
+          "expires_in"
+        ],
+        "title": "TelegramLinkOut",
         "type": "object"
       },
       "TokenOut": {
@@ -518,6 +629,152 @@
         "summary": "Change Password",
         "tags": [
           "account"
+        ]
+      }
+    },
+    "/api/account/notifications/settings": {
+      "get": {
+        "operationId": "get_settings_api_account_notifications_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Settings",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "put": {
+        "operationId": "update_settings_api_account_notifications_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Settings",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/account/notifications/telegram/link": {
+      "delete": {
+        "operationId": "telegram_unlink_api_account_notifications_telegram_link_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Telegram Unlink",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "post": {
+        "operationId": "telegram_link_api_account_notifications_telegram_link_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramLinkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Telegram Link",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/account/notifications/telegram/verify": {
+      "post": {
+        "operationId": "telegram_verify_api_account_notifications_telegram_verify_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Telegram Verify",
+        "tags": [
+          "notifications"
         ]
       }
     },

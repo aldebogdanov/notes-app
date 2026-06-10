@@ -69,3 +69,30 @@ class DeleteAccountIn(BaseModel):
 
 class OkOut(BaseModel):
     ok: bool = True
+
+
+class NotificationChannelOut(BaseModel):
+    available: bool  # adapter configured server-side
+    enabled: bool
+    linked: bool  # chat reference present; the reference itself is never exposed
+
+
+class NotificationSettingsOut(BaseModel):
+    timezone: str
+    channels: dict[str, NotificationChannelOut]
+
+
+class TelegramChannelIn(BaseModel):
+    enabled: bool
+
+
+class NotificationSettingsIn(BaseModel):
+    # All fields optional: PUT is a partial update.
+    timezone: str | None = None
+    channels: dict[str, TelegramChannelIn] | None = None
+
+
+class TelegramLinkOut(BaseModel):
+    code: str
+    deep_link: str
+    expires_in: int

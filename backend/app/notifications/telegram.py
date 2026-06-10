@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import anyio
 import httpx
 
@@ -7,6 +9,12 @@ TELEGRAM_MESSAGE_LIMIT = 4096
 _MAX_ATTEMPTS = 3
 _BACKOFF_SECONDS = (0.5, 1.0, 2.0)
 _REQUEST_TIMEOUT = 10.0
+
+
+@dataclass(frozen=True)
+class TelegramUpdate:
+    chat_id: int
+    text: str
 
 
 class TelegramAdapter:
@@ -24,14 +32,35 @@ class TelegramAdapter:
         self._base_url = base_url.rstrip("/")
         self._client = client
         self._sleep = sleep
+        self._bot_username: str | None = None
 
     async def send(self, chat_ref: str, text: str) -> None:
         # Only the adapter knows its channel's cap; callers send full text.
         if len(text) > TELEGRAM_MESSAGE_LIMIT:
             text = text[: TELEGRAM_MESSAGE_LIMIT - 1] + "…"
-        url = f"{self._base_url}/bot{self._token}/sendMessage"
-        payload = {"chat_id": chat_ref, "text": text}
+        await self._call("sendMessage", {"chat_id": chat_ref, "text": text})
 
+    async def get_bot_username(self) -> str:
+        """Bot username for t.me deep links; getMe result cached per instance."""
+        if self._bot_username is None:
+            data = await self._call("getMe", {})
+            self._bot_username = (data.get("result") or {}).get("username") or ""
+        return self._bot_username
+
+    async def get_updates(self) -> list[TelegramUpdate]:
+        """One short poll; malformed updates are ignored, not fatal."""
+        data = await self._call("getUpdates", {"timeout": 0})
+        updates: list[TelegramUpdate] = []
+        for raw in data.get("result") or []:
+            message = (raw or {}).get("message") or {}
+            chat_id = (message.get("chat") or {}).get("id")
+            text = message.get("text")
+            if isinstance(chat_id, int) and isinstance(text, str):
+                updates.append(TelegramUpdate(chat_id=chat_id, text=text))
+        return updates
+
+    async def _call(self, method: str, payload: dict) -> dict:
+        url = f"{self._base_url}/bot{self._token}/{method}"
         last_error = ""
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             wait = _BACKOFF_SECONDS[min(attempt, len(_BACKOFF_SECONDS)) - 1]
@@ -42,7 +71,10 @@ class TelegramAdapter:
                 last_error = f"network error: {type(exc).__name__}"
             else:
                 if response.status_code == 200:
-                    return
+                    try:
+                        return response.json()
+                    except ValueError:
+                        return {}
                 last_error = f"HTTP {response.status_code}: {self._description(response)}"
                 if response.status_code == 429:
                     retry_after = self._retry_after(response)
@@ -50,11 +82,11 @@ class TelegramAdapter:
                         wait = retry_after
                 elif response.status_code < 500:
                     # Bad chat_id, blocked bot, bad token: retrying cannot help.
-                    raise NotificationSendError(f"telegram send failed: {last_error}")
+                    raise NotificationSendError(f"telegram {method} failed: {last_error}")
             if attempt < _MAX_ATTEMPTS:
                 await self._sleep(wait)
         raise NotificationSendError(
-            f"telegram send failed after {_MAX_ATTEMPTS} attempts: {last_error}"
+            f"telegram {method} failed after {_MAX_ATTEMPTS} attempts: {last_error}"
         )
 
     async def _post(self, url: str, payload: dict) -> httpx.Response:
