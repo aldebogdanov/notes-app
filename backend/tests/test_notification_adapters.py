@@ -6,7 +6,7 @@ import respx
 
 from app.config import Settings
 from app.notifications import NotificationSendError, build_adapter_registry
-from app.notifications.telegram import TELEGRAM_MESSAGE_LIMIT, TelegramAdapter
+from app.notifications.telegram import TELEGRAM_MESSAGE_LIMIT, TelegramAdapter, TelegramUpdate
 
 TOKEN = "12345:fake-token"
 SEND_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -201,3 +201,54 @@ def test_app_boots_tokenless_with_empty_registry(client):
 
     assert client.get("/healthz").json() == {"status": "ok"}
     assert build_adapter_registry(settings) == {}
+
+
+# --- getMe / getUpdates (M4) ---
+
+GET_ME_URL = f"https://api.telegram.org/bot{TOKEN}/getMe"
+GET_UPDATES_URL = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_get_bot_username_cached_after_first_call():
+    route = respx.post(GET_ME_URL).mock(
+        return_value=httpx.Response(
+            200, json={"ok": True, "result": {"id": 1, "username": "reminder_bot"}}
+        )
+    )
+    adapter = make_adapter(SleepRecorder())
+
+    assert await adapter.get_bot_username() == "reminder_bot"
+    assert await adapter.get_bot_username() == "reminder_bot"
+    assert route.call_count == 1  # cached, no second HTTP call
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_get_updates_parses_and_tolerates_malformed():
+    respx.post(GET_UPDATES_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "result": [
+                    {"message": {"chat": {"id": 42}, "text": "/start abc"}},
+                    {"message": {"chat": {"id": 43}}},  # no text
+                    {"edited_message": {"chat": {"id": 44}, "text": "x"}},  # no message
+                    {"message": {"chat": {}, "text": "no chat id"}},
+                    None,
+                ],
+            },
+        )
+    )
+    updates = await make_adapter(SleepRecorder()).get_updates()
+    assert updates == [TelegramUpdate(chat_id=42, text="/start abc")]
+
+
+@pytest.mark.anyio
+@respx.mock
+async def test_get_updates_transport_failure_raises():
+    respx.post(GET_UPDATES_URL).mock(return_value=httpx.Response(401, json={"ok": False}))
+    with pytest.raises(NotificationSendError, match="getUpdates"):
+        await make_adapter(SleepRecorder()).get_updates()
