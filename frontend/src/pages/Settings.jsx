@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { clearToken } from '../auth.js';
+import NotificationSettings from '../components/NotificationSettings.jsx';
 import { useLang } from '../i18n.jsx';
 
 export default function Settings() {
@@ -76,6 +77,8 @@ export default function Settings() {
           <button type="submit" className="btn btn-primary">{t('settings.submit')}</button>
         </form>
       </section>
+
+      <NotificationSettings />
 
       <section className="settings-card danger">
         <h2>{t('settings.dangerZone')}</h2>
