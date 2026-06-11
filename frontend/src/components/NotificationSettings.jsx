@@ -112,83 +112,82 @@ export default function NotificationSettings() {
     <section className="settings-card">
       <h2>{t('settings.notifications.title')}</h2>
 
-      {!telegram.available && (
-        <p className="settings-hint">{t('settings.notifications.serverUnavailable')}</p>
-      )}
+      <div className="notification-settings">
+        {!telegram.available && (
+          <p className="settings-hint">{t('settings.notifications.serverUnavailable')}</p>
+        )}
 
-      {telegram.available && !telegram.linked && (
-        <div>
-          {!link && (
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={startLink}>
-              {t('settings.notifications.linkButton')}
-            </button>
-          )}
-          {link && (
-            <div>
-              <p className="settings-hint">{t('settings.notifications.linkHint')}</p>
-              <p>
-                <a href={link.deep_link} target="_blank" rel="noreferrer">
-                  {t('settings.notifications.openTelegram')}
-                </a>
-              </p>
-              <p>
-                <code>{link.code}</code>{' '}
-                <button type="button" className="btn" disabled={busy} onClick={copyCode}>
-                  {t('settings.notifications.copyCode')}
-                </button>
-              </p>
-              <button type="button" className="btn btn-primary" disabled={busy} onClick={verify}>
-                {t('settings.notifications.verify')}
+        {telegram.available && !telegram.linked && !link && (
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={startLink}>
+            {t('settings.notifications.linkButton')}
+          </button>
+        )}
+        {telegram.available && !telegram.linked && link && (
+          <>
+            <p className="settings-hint">{t('settings.notifications.linkHint')}</p>
+            <a href={link.deep_link} target="_blank" rel="noreferrer">
+              {t('settings.notifications.openTelegram')}
+            </a>
+            <div className="notification-row">
+              <code>{link.code}</code>
+              <button type="button" className="btn" disabled={busy} onClick={copyCode}>
+                {t('settings.notifications.copyCode')}
               </button>
             </div>
-          )}
-        </div>
-      )}
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={verify}>
+              {t('settings.notifications.verify')}
+            </button>
+          </>
+        )}
 
-      {telegram.available && telegram.linked && (
-        <div>
-          <p>{t('settings.notifications.linked')}</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={telegram.enabled}
-              disabled={busy}
-              onChange={(e) => setEnabled(e.target.checked)}
-            />{' '}
-            {t('settings.notifications.enableLabel')}
-          </label>
-          <p>
+        {telegram.available && telegram.linked && (
+          <>
+            <p className="notification-linked">{t('settings.notifications.linked')}</p>
+            <label className="notification-toggle">
+              <input
+                type="checkbox"
+                checked={telegram.enabled}
+                disabled={busy}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />
+              {t('settings.notifications.enableLabel')}
+            </label>
             <button type="button" className="btn btn-danger" disabled={busy} onClick={unlink}>
               {t('settings.notifications.unlink')}
             </button>
-          </p>
-        </div>
-      )}
+          </>
+        )}
 
-      <label>
-        {t('settings.notifications.timezoneLabel')}
-        <select
-          value={settings.timezone}
-          disabled={busy}
-          onChange={(e) => saveTimezone(e.target.value)}
-        >
-          {timezoneOptions().map((zone) => (
-            <option key={zone} value={zone}>
-              {zone}
-            </option>
-          ))}
-        </select>
-      </label>
-      {settings.timezone !== detected && (
-        <p>
-          <button type="button" className="btn" disabled={busy} onClick={() => saveTimezone(detected)}>
+        <hr className="notification-divider" />
+
+        <label className="notification-timezone">
+          {t('settings.notifications.timezoneLabel')}
+          <select
+            value={settings.timezone}
+            disabled={busy}
+            onChange={(e) => saveTimezone(e.target.value)}
+          >
+            {timezoneOptions().map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+        </label>
+        {settings.timezone !== detected && (
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => saveTimezone(detected)}
+          >
             {t('settings.notifications.useMyTimezone', { timezone: detected })}
           </button>
-        </p>
-      )}
+        )}
 
-      {error && <div className="error">{error}</div>}
-      {success && <div className="success">{success}</div>}
+        {error && <div className="error">{error}</div>}
+        {success && <div className="success">{success}</div>}
+      </div>
     </section>
   );
 }
