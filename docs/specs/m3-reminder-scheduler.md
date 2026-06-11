@@ -21,7 +21,10 @@ when a note's date arrives.
 - **Archived notes are skipped** (product call: archived = put away, no reminders).
   Unarchiving after the date has passed does not resurrect the reminder.
 - A `skipped`/`sent`/`failed` row is terminal forever — enabling notifications later never
-  resends old reminders.
+  resends old reminders. *(Amended post-M7, found during the live demo: undeliverable and
+  archived outcomes are deferred until the note's day is over in the owner timezone, so a
+  user who links/enables mid-day still gets today's reminder; only a finished day becomes
+  a terminal skip.)*
 
 ## 2. Scheduler (`app/notifications/scheduler.py`)
 
@@ -76,8 +79,8 @@ terminal row:
 | note created after its due moment (born past-due) | `skipped` |
 | channel enabled + chat linked + adapter in registry | claim → send → `sent` (+`sent_at`) |
 | send raises `NotificationSendError` | `attempts += 1`, `last_error`; `attempts >= max_attempts` → `failed`, else row stays `pending` for retry next pass |
-| disabled, unlinked, or adapter not configured | `skipped` immediately |
-| note archived | `skipped` |
+| disabled, unlinked, or adapter not configured | left unresolved while the note's day is still running in the owner tz ("today is still live" — configuring later the same day delivers); `skipped` once the day is over |
+| note archived | same deferred rule — unarchiving later the same day still delivers |
 
 **Claim protocol**: upsert the row as `pending` with `attempts += 1` and **commit before
 sending**; finalize (`sent`/`failed`) and commit after. Crash between send and finalize →

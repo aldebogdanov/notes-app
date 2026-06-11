@@ -139,23 +139,30 @@ async def test_catchup_sent_but_born_past_due_skipped(scheduler, session_factory
         {},  # nothing configured
     ],
 )
-async def test_undeliverable_user_skipped(session_factory, adapter, clock, settings):
+async def test_undeliverable_day_over_skipped_but_today_stays_live(
+    session_factory, adapter, clock, settings
+):
     scheduler = ReminderScheduler(session_factory, {"telegram": adapter}, now=clock)
     s = session_factory()
-    note = make_note(s, make_user(s, settings), TODAY)
+    user = make_user(s, settings)
+    yesterday_note = make_note(s, user, YESTERDAY, title="day over")
+    today_note = make_note(s, user, TODAY, title="still live")
 
     await scheduler.process_due_notes()
 
-    assert get_row(s, note.id).status == "skipped"
+    # The finished day is a terminal miss…
+    assert get_row(s, yesterday_note.id).status == "skipped"
+    # …but today's reminder window is still open: no row, stays pending.
+    assert get_row(s, today_note.id) is None
     assert adapter.sent == []
     s.close()
 
 
 @pytest.mark.anyio
-async def test_adapter_not_in_registry_skips(session_factory, clock):
+async def test_adapter_not_in_registry_skips_after_day_over(session_factory, clock):
     scheduler = ReminderScheduler(session_factory, {}, now=clock)
     s = session_factory()
-    note = make_note(s, make_user(s), TODAY)
+    note = make_note(s, make_user(s), YESTERDAY)
 
     await scheduler.process_due_notes()
 
@@ -164,14 +171,43 @@ async def test_adapter_not_in_registry_skips(session_factory, clock):
 
 
 @pytest.mark.anyio
-async def test_archived_due_note_skipped(scheduler, session_factory, adapter):
+async def test_archived_note_skipped_after_day_over_live_today(scheduler, session_factory, adapter):
     s = session_factory()
-    note = make_note(s, make_user(s), TODAY, archived=True)
+    user = make_user(s)
+    old_archived = make_note(s, user, YESTERDAY, archived=True, title="old")
+    today_archived = make_note(s, user, TODAY, archived=True, title="today")
 
     await scheduler.process_due_notes()
 
-    assert get_row(s, note.id).status == "skipped"
+    assert get_row(s, old_archived.id).status == "skipped"
+    # Unarchiving later today should still deliver — no terminal row yet.
+    assert get_row(s, today_archived.id) is None
     assert adapter.sent == []
+    s.close()
+
+
+@pytest.mark.anyio
+async def test_enabling_later_the_same_day_delivers(session_factory, adapter, clock):
+    # The reported scenario: a pass runs while the user is still configuring
+    # (disabled), then the user links+enables — today's note must still fire.
+    scheduler = ReminderScheduler(session_factory, {"telegram": adapter}, now=clock)
+    s = session_factory()
+    user = make_user(s, {"channels": {"telegram": {"enabled": False, "chat_id": None}}})
+    note = make_note(s, user, TODAY)
+
+    await scheduler.process_due_notes()
+    assert get_row(s, note.id) is None
+    assert adapter.sent == []
+
+    user.notification_settings = {
+        "timezone": "UTC",
+        "channels": {"telegram": {"enabled": True, "chat_id": 777}},
+    }
+    s.commit()
+
+    await scheduler.process_due_notes()
+    assert get_row(s, note.id).status == "sent"
+    assert len(adapter.sent) == 1
     s.close()
 
 

@@ -61,8 +61,9 @@ A note with a date can ping you on Telegram at 00:00 of that date in your timezo
    pick your timezone.
 
 Per note and channel the reminder status is `pending` → `sent`, or `skipped`
-(notifications off / unlinked / no server token / note archived / note created after
-its date), or `failed` (Telegram kept erroring after 3 attempts). The note API exposes
+(notifications off / unlinked / no server token / note archived — applied once the
+note's day is over, so enabling mid-day still delivers; created-after-its-date notes
+skip immediately), or `failed` (Telegram kept erroring after 3 attempts). The note API exposes
 it as `notification_status`. Design details: `SPEC.md` and `docs/specs/`.
 
 The scheduler runs inside the backend process (`SCHEDULER_ENABLED=true` by default;
