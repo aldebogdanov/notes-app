@@ -125,6 +125,10 @@ Status: ✅ = implementation merged.
   the bot sends a real message, `SUBMISSION.md` (tools used & why, scaffold observations,
   next steps, known caveats). Final DoD sweep.
 
+- **M8+M9 (optional, combined) — Public sharing & export** (`feat/m8-m9-sharing-export`)
+  Combined into one spec PR + one impl PR (2026-06-11): both are small and touch the
+  same surfaces. See `docs/specs/m8-m9-sharing-export.md`. Original entries:
+
 - **M8 (optional) — Public sharing** (`feat/m8-public-sharing`)
   Read-only share link per note: share token column, `POST/DELETE /api/notes/{id}/share`,
   public `GET /api/public/notes/{token}`, UI button + copy link, i18n, tests.
