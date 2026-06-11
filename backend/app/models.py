@@ -49,6 +49,10 @@ class Note(Base):
     pinned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
+    # NULL = not shared; the public endpoint resolves notes by this token.
+    share_token: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

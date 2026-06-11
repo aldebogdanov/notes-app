@@ -120,7 +120,7 @@ Status: ✅ = implementation merged.
   feedback layer at all (silent successes, per-page inline error divs duplicated 5×, raw
   `window.confirm`) — moves to SUBMISSION.md "scaffold observations / next steps" (M7).
 
-- **M7 — Docs, demo & polish** (`feat/m7-docs-demo`)
+- ✅ **M7 — Docs, demo & polish** (`feat/m7-docs-demo`)
   README section (setup, bot token, linking), demo script — exact command sequence proving
   the bot sends a real message, `SUBMISSION.md` (tools used & why, scaffold observations,
   next steps, known caveats). Final DoD sweep.

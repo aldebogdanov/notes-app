@@ -37,6 +37,33 @@ async function request(path, { method = 'GET', body, form } = {}) {
   return res.json();
 }
 
+// The JWT cannot ride a plain <a href>, so downloads go through fetch + blob.
+async function download(path, { method = 'GET', body } = {}) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  let payload;
+  if (body !== undefined) {
+    payload = JSON.stringify(body);
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(`${BASE}${path}`, { method, headers, body: payload });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new ApiError(detail.detail || res.statusText, res.status);
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^";]+)"?/);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = match ? match[1] : 'download';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function buildQuery(params) {
   const qs = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -73,6 +100,13 @@ export const api = {
     }),
   deleteAccount: (password) =>
     request('/account', { method: 'DELETE', body: { password } }),
+
+  shareNote: (id) => request(`/notes/${id}/share`, { method: 'POST' }),
+  revokeShare: (id) => request(`/notes/${id}/share`, { method: 'DELETE' }),
+  getPublicNote: (token) => request(`/public/notes/${token}`),
+  exportNote: (id) => download(`/notes/${id}/export`),
+  exportAll: () => download('/notes/export'),
+  bulkExport: (ids) => download('/notes/bulk-export', { method: 'POST', body: { ids } }),
 
   getNotificationSettings: () => request('/account/notifications/settings'),
   updateNotificationSettings: (payload) =>

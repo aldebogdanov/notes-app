@@ -1,7 +1,11 @@
+import io
+import re
+import secrets
+import zipfile
 from calendar import monthrange
 from datetime import UTC, date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import case, or_
 from sqlalchemy.orm import Session, selectinload
 
@@ -45,6 +49,27 @@ def _notify_scheduler(request: Request) -> None:
     scheduler = getattr(request.app.state, "scheduler", None)
     if scheduler is not None:
         scheduler.notify_change()
+
+
+def _slug(title: str) -> str:
+    cleaned = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return cleaned[:40] or "note"
+
+
+def _note_markdown(note: Note) -> str:
+    return f"# {note.title}\n\n{note.content}"
+
+
+def _zip_response(notes: list[Note], filename: str) -> Response:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for n in notes:
+            archive.writestr(f"{n.id}-{_slug(n.title)}.md", _note_markdown(n))
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("", response_model=NotesPage)
@@ -153,6 +178,35 @@ def calendar(
     return [CalendarDay(date=d, note_ids=ids) for d, ids in sorted(buckets.items())]
 
 
+# NB: static /export paths must be declared before /{note_id} routes —
+# FastAPI matches in declaration order (same reason /calendar sits above).
+@router.get("/export")
+def export_all(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    notes = db.query(Note).filter(Note.user_id == user.id).order_by(Note.id).all()
+    return _zip_response(notes, f"notes-export-{date.today().isoformat()}.zip")
+
+
+@router.post("/bulk-export")
+def bulk_export(
+    payload: BulkDeleteIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    # Foreign ids are silently skipped — same idiom as bulk-delete.
+    notes = (
+        db.query(Note)
+        .filter(Note.user_id == user.id, Note.id.in_(payload.ids))
+        .order_by(Note.id)
+        .all()
+    )
+    if not notes:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No exportable notes")
+    return _zip_response(notes, f"notes-export-{date.today().isoformat()}.zip")
+
+
 @router.post("/bulk-delete", status_code=status.HTTP_204_NO_CONTENT)
 def bulk_delete(
     request: Request,
@@ -237,6 +291,48 @@ def unarchive_note(
         db.commit()
         db.refresh(note)
         _notify_scheduler(request)
+    return note
+
+
+@router.get("/{note_id}/export")
+def export_note(
+    note_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    note = _own_note_or_404(note_id, user, db)
+    return Response(
+        content=_note_markdown(note),
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{_slug(note.title)}.md"'},
+    )
+
+
+@router.post("/{note_id}/share", response_model=NoteOut)
+def share_note(
+    note_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Note:
+    note = _own_note_or_404(note_id, user, db)
+    if note.share_token is None:
+        note.share_token = secrets.token_urlsafe(16)
+        db.commit()
+        db.refresh(note)
+    return note
+
+
+@router.delete("/{note_id}/share", response_model=NoteOut)
+def revoke_share(
+    note_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Note:
+    note = _own_note_or_404(note_id, user, db)
+    if note.share_token is not None:
+        note.share_token = None
+        db.commit()
+        db.refresh(note)
     return note
 
 

@@ -12,6 +12,8 @@ Each user has their own private space. Every note is a Markdown document with a 
 - Full-text search across title and body.
 - Optional date on a note + a calendar view.
 - Optional Telegram reminder when a note's date arrives.
+- Read-only public link for a note (revocable).
+- Export: one note as Markdown, selected or all notes as a zip.
 
 ## Run it
 
@@ -71,6 +73,15 @@ Terminal end-to-end demo (requires `jq` and a token-enabled stack):
 ```bash
 scripts/demo-reminder.sh
 ```
+
+## Sharing & export
+
+- **Share**: open a note → **Share** — you get `/share/<token>` to send around; the page
+  is read-only and always shows the current content. **Unshare** kills the link
+  immediately (re-sharing issues a new token).
+- **Export**: a single note exports as `.md` from the editor; selected notes export as
+  a zip from the list's select mode; everything (including archived) — from
+  Settings → Export.
 
 ## Layout
 
