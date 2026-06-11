@@ -16,6 +16,7 @@ export default function Settings() {
 
   const [deletePw, setDeletePw] = useState('');
   const [deleteError, setDeleteError] = useState(null);
+  const [exportError, setExportError] = useState(null);
 
   const changePassword = async (e) => {
     e.preventDefault();
@@ -79,6 +80,26 @@ export default function Settings() {
       </section>
 
       <NotificationSettings />
+
+      <section className="settings-card">
+        <h2>{t('export.allTitle')}</h2>
+        <p className="settings-hint">{t('export.allHint')}</p>
+        {exportError && <div className="error">{exportError}</div>}
+        <button
+          type="button"
+          className="btn"
+          onClick={async () => {
+            setExportError(null);
+            try {
+              await api.exportAll();
+            } catch (err) {
+              setExportError(err.message);
+            }
+          }}
+        >
+          {t('export.all')}
+        </button>
+      </section>
 
       <section className="settings-card danger">
         <h2>{t('settings.dangerZone')}</h2>

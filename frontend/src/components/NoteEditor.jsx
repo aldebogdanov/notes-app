@@ -8,12 +8,13 @@ function emptyNote() {
 }
 
 const NoteEditor = forwardRef(function NoteEditor(
-  { note, onSave, onCancel, onDelete, onPin, onArchive },
+  { note, onSave, onCancel, onDelete, onPin, onArchive, onShare, onExport },
   ref,
 ) {
   const { t } = useLang();
   const [draft, setDraft] = useState(emptyNote());
   const [tagsInput, setTagsInput] = useState('');
+  const [copied, setCopied] = useState(false);
   const formRef = useRef(null);
   const contentRef = useRef(null);
 
@@ -48,6 +49,16 @@ const NoteEditor = forwardRef(function NoteEditor(
   const isPersisted = Boolean(note);
   const isPinned = Boolean(draft.pinned_at);
   const isArchived = Boolean(draft.archived_at);
+  const shareToken = note?.share_token;
+  const shareUrl = shareToken ? `${window.location.origin}/share/${shareToken}` : null;
+
+  const copyShareUrl = async () => {
+    if (navigator.clipboard && shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <form ref={formRef} className="editor" onSubmit={submit}>
@@ -111,9 +122,30 @@ const NoteEditor = forwardRef(function NoteEditor(
           <ReactMarkdown>{draft.content || t('editor.previewEmpty')}</ReactMarkdown>
         </div>
       </div>
+      {isPersisted && shareUrl && (
+        <div className="meta">
+          <label>
+            🔗 {t('share.publicLink')}
+            <input value={shareUrl} readOnly onFocus={(e) => e.target.select()} />
+          </label>
+          <button type="button" className="btn" onClick={copyShareUrl}>
+            {copied ? t('share.copied') : t('share.copy')}
+          </button>
+        </div>
+      )}
       <div className="actions">
         <button type="submit" className="btn btn-primary">{t('editor.save')}</button>
         {onCancel && <button type="button" className="btn btn-ghost" onClick={onCancel}>{t('editor.cancel')}</button>}
+        {isPersisted && onShare && (
+          <button type="button" className="btn" onClick={() => onShare(note, !shareToken)}>
+            {shareToken ? t('share.unshare') : t('share.share')}
+          </button>
+        )}
+        {isPersisted && onExport && (
+          <button type="button" className="btn" onClick={() => onExport(note)}>
+            {t('export.single')}
+          </button>
+        )}
         <div className="spacer" />
         {note && onDelete && (
           <button

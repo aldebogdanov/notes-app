@@ -37,6 +37,7 @@ class NoteOut(BaseModel):
     archived_at: datetime | None
     pinned_at: datetime | None
     notification_status: dict[str, NotificationStatus] = {}
+    share_token: str | None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
@@ -96,3 +97,13 @@ class TelegramLinkOut(BaseModel):
     code: str
     deep_link: str
     expires_in: int
+
+
+class PublicNoteOut(BaseModel):
+    # Deliberately minimal: no ids, no owner info, no notification fields.
+    title: str
+    content: str
+    tags: list[str]
+    note_date: date | None
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)

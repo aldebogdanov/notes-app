@@ -12,6 +12,7 @@ from .routers import account as account_router
 from .routers import auth as auth_router
 from .routers import notes as notes_router
 from .routers import notifications as notifications_router
+from .routers import public as public_router
 from .routers import tags as tags_router
 
 
@@ -57,4 +58,5 @@ app.include_router(auth_router.router, prefix="/api")
 app.include_router(account_router.router, prefix="/api")
 app.include_router(notes_router.router, prefix="/api")
 app.include_router(notifications_router.router, prefix="/api")
+app.include_router(public_router.router, prefix="/api")
 app.include_router(tags_router.router, prefix="/api")

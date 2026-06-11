@@ -107,6 +107,33 @@ export default function Notes({ registerAction }) {
     }
   };
 
+  const onShare = async (note, share) => {
+    try {
+      const updated = share ? await api.shareNote(note.id) : await api.revokeShare(note.id);
+      setSelected(updated);
+      await load(0, false);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const onExport = async (note) => {
+    try {
+      await api.exportNote(note.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const bulkExport = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      await api.bulkExport([...selectedIds]);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const toggleBulk = () => {
     setBulkMode((b) => !b);
     setSelectedIds(new Set());
@@ -194,6 +221,13 @@ export default function Notes({ registerAction }) {
               <button className="link-button" onClick={selectAll}>{t('notes.selectAll')}</button>
               <div className="spacer" />
               <button
+                className="btn"
+                onClick={bulkExport}
+                disabled={selectedCount === 0}
+              >
+                {t('export.selected', { count: selectedCount })}
+              </button>
+              <button
                 className="btn btn-danger"
                 onClick={bulkDelete}
                 disabled={selectedCount === 0}
@@ -229,6 +263,8 @@ export default function Notes({ registerAction }) {
             onDelete={onDelete}
             onPin={onPin}
             onArchive={onArchive}
+            onShare={onShare}
+            onExport={onExport}
           />
         ) : (
           <div className="empty-state">

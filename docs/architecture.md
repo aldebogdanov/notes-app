@@ -120,6 +120,7 @@ erDiagram
         date note_date
         datetime archived_at
         datetime pinned_at
+        string share_token
         datetime created_at
         datetime updated_at
     }
@@ -138,6 +139,7 @@ erDiagram
 - **Ownership** is enforced in every query via `user_id = current_user.id`. There is no sharing model and no RBAC.
 - **Soft-delete** uses `archived_at` (nullable timestamp). Default list view excludes archived.
 - **Pinning** uses `pinned_at` (nullable timestamp). Non-null → sorted on top.
+- **Sharing** uses `notes.share_token` (nullable, unique): non-null → the note is readable without auth at `/api/public/notes/{token}`. Revocation nulls the token; re-sharing rotates it.
 - **Reminders** live in `note_notifications`: one row per (note, channel), `UNIQUE(note_id, channel)`. No row = nothing processed yet; the scheduler claims a row as `pending` before sending and finalizes it to `sent`/`skipped`/`failed` — terminal states are immutable (enabling notifications later never resends). `users.notification_settings` (JSON) holds the per-user timezone and per-channel config; the chat reference never leaves the backend.
 
 ## Backend layout
@@ -162,8 +164,9 @@ backend/
 │       ├── account.py  /account/change-password, DELETE /account
 │       ├── notes.py    /notes CRUD, calendar, archive, pin, bulk-delete
 │       ├── notifications.py  /account/notifications settings + telegram linking
+│       ├── public.py   /public/notes/{token} — the only unauthenticated data route
 │       └── tags.py     /tags
-├── alembic/versions/   0001 init · 0002 archive+pin · 0003 notifications
+├── alembic/versions/   0001 init · 0002 archive+pin · 0003 notifications · 0004 share token
 ├── scripts/
 │   ├── seed.py         demo user + sample notes (make seed)
 │   └── dump_openapi.py regenerates openapi.json (make openapi-dump)
@@ -187,7 +190,7 @@ frontend/src/
 │                       ThemeToggle · LanguageToggle ·
 │                       MarkdownToolbar · HelpOverlay ·
 │                       NotificationSettings
-└── pages/              Login · Register · Notes · Calendar · Settings
+└── pages/              Login · Register · Notes · Calendar · Settings · SharedNote
 ```
 
 Testing uses **vitest + jsdom + @testing-library/react**. Backend tests run independently with pytest against an in-memory SQLite per test.
@@ -216,6 +219,11 @@ All paths are prefixed with `/api`. JWT is required everywhere except register/l
 | POST                | `/account/notifications/telegram/link`   | One-time code + t.me deep link          |
 | POST                | `/account/notifications/telegram/verify` | Confirms linking via `getUpdates`       |
 | DELETE              | `/account/notifications/telegram/link`   | Unlink + disable                        |
+| POST / DELETE       | `/notes/{id}/share`      | Publish / revoke a read-only link (idempotent)          |
+| GET                 | `/public/notes/{token}`  | Public, no auth; minimal payload; archived/revoked → 404 |
+| GET                 | `/notes/{id}/export`     | Markdown download                                       |
+| GET                 | `/notes/export`          | Zip of all notes (incl. archived)                       |
+| POST                | `/notes/bulk-export`     | Zip of selected notes; body `{"ids": [int]}`            |
 | GET                 | `/healthz`               | Liveness                                                |
 
 The full machine-readable schema lives at `backend/openapi.json`. Regenerate with `make openapi-dump`; a drift test in the backend suite fails if the committed snapshot is stale.
