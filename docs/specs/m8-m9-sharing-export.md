@@ -45,7 +45,10 @@ limiting on the public endpoint).
 |---|---|---|
 | `GET /api/notes/{id}/export` | owner | single Markdown file: `# {title}\n\n{content}`; `Content-Disposition: attachment; filename="{slug}.md"`; `text/markdown` |
 | `GET /api/notes/export` | owner | zip of **all** notes (active + archived), flat, `{id}-{slug}.md` entries; in-memory `zipfile` → `Response`, `application/zip`, filename `notes-export-{YYYY-MM-DD}.zip` |
+| `POST /api/notes/bulk-export` | owner | body `{"ids": [int]}` (`BulkDeleteIn` shape/limits) → zip of the selected owned notes; foreign ids silently skipped (bulk-delete idiom); nothing exportable → 404 |
 
+- Bulk export mirrors `bulk-delete`: POST because the id list rides the body; reuses
+  the same zip builder as export-all.
 - `_slug(title)`: lowercase, alnum + dash, max 40 chars, fallback `"note"`.
 - Route order matters: `/notes/export` must be declared **before** `/notes/{note_id}`
   (FastAPI matches in declaration order; same reason `/notes/calendar` already sits
@@ -67,6 +70,8 @@ limiting on the public endpoint).
   dependencies that require auth.
 - **Settings**: "Export all notes (.zip)" button in a small new card (data ownership
   lives naturally next to account management).
+- **Notes select mode**: "Export ({count})" button next to the existing
+  "Delete ({count})" — `bulkExport(ids)` through the download helper.
 - i18n: `share.*` and `export.*` keys, EN + RU.
 
 ## 5. Tests
@@ -80,7 +85,9 @@ Backend (`test_sharing.py`, `test_export.py`):
 3. ownership: non-owner share/revoke → 404 (same `_own_note_or_404` idiom);
 4. export single: content + content-disposition + slug; foreign note → 404;
 5. export all: zip opens, one entry per note incl. archived, entries non-empty;
-6. openapi snapshot regenerated (drift test guards).
+6. bulk export: zip contains exactly the selected owned notes; foreign ids silently
+   skipped; all-foreign / empty result → 404;
+7. openapi snapshot regenerated (drift test guards).
 
 Frontend (`SharedNote.test.jsx`, NoteEditor test extension):
 7. SharedNote renders fetched note; error state on 404;
