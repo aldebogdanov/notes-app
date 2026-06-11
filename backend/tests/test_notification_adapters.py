@@ -39,7 +39,7 @@ async def test_send_success_single_post():
 
     assert route.call_count == 1
     body = json.loads(route.calls.last.request.read())
-    assert body == {"chat_id": "42", "text": "hello"}
+    assert body == {"chat_id": "42", "text": "hello", "parse_mode": "Markdown"}
     assert sleep.calls == []
 
 

@@ -38,7 +38,12 @@ class TelegramAdapter:
         # Only the adapter knows its channel's cap; callers send full text.
         if len(text) > TELEGRAM_MESSAGE_LIMIT:
             text = text[: TELEGRAM_MESSAGE_LIMIT - 1] + "…"
-        await self._call("sendMessage", {"chat_id": chat_ref, "text": text})
+        await self._call(
+            "sendMessage",
+            # Legacy "Markdown" parse mode: lax enough for arbitrary note
+            # bodies (MarkdownV2 400s on any unescaped special character).
+            {"chat_id": chat_ref, "text": text, "parse_mode": "Markdown"},
+        )
 
     async def get_bot_username(self) -> str:
         """Bot username for t.me deep links; getMe result cached per instance."""
